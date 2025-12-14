@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sorting Visualization</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="ui">
+    <h1>Sorting Algorithms Visualized</h1>
+    <div class="controls">
+      <label for="algo">Algorithm</label>
+      <select id="algo">
+        <option value="selection">Selection</option>
+        <option value="insertion">Insertion</option>
+        <option value="merge">Merge</option>
+        <option value="bubble">Bubble</option>
+        <option value="quick">Quicksort</option>
+        <option value="heap">Heap (extract)</option>
+      </select>
+
+      <label for="delay">Delay (ms)</label>
+      <input id="delay" type="number" min="5" step="10" value="100">
+
+      <label for="size">Columns</label>
+      <input id="size" type="number" min="5" max="50" step="1" value="30">
+
+      <button id="start">Start</button>
+      <button id="stop">Stop</button>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div id="overlay" class="hidden">
+    <div class="panel">
+      <p id="overlay-text">Finished.</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
