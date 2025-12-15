@@ -1,8 +1,3 @@
-/* Minimal sorting visualization using canvas and generator-based incremental steps.
-   - Single-row of columns rendered as stacked circles (like an LED column height)
-   - Algorithms implemented as generators that yield after every swap/placement
-*/
-
 document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('canvas');
   if (!canvas) {
@@ -15,10 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const startBtn = document.getElementById('start');
   const stopBtn = document.getElementById('stop');
   const status = document.getElementById('status');
-  const overlay = document.getElementById('overlay');
   const sizeInput = document.getElementById('size');
 
-  // ensure required elements exist
+  const MAX_SCALE = 1.4;
+  const TARGET_COL_PX = 18;
+  const TARGET_ROW_PX = 18;
+  const MIN_SCALE = 0.6;
+
   const required = {algoSel, delayInput, startBtn, stopBtn, status, overlay, sizeInput};
   for (const [k, el] of Object.entries(required)){
     if (!el){
@@ -27,28 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // show runtime errors in the UI for easier debugging
-  window.addEventListener('error', (ev) => {
-    const msg = ev.error ? (ev.error.stack || ev.error.message) : ev.message;
-    console.error('Runtime error captured:', msg);
-    status.textContent = 'Error: ' + String(ev.message || msg).split('\n')[0];
-    const ot = document.getElementById('overlay-text');
-    if (ot) {
-      ot.textContent = 'Runtime error: ' + (ev.error ? ev.error.message : ev.message);
-      overlay.classList.remove('hidden');
-    }
-  });
-  window.addEventListener('unhandledrejection', (ev) => {
-    console.error('Unhandled rejection:', ev.reason);
-    status.textContent = 'UnhandledRejection: ' + String(ev.reason).split('\n')[0];
-    const ot = document.getElementById('overlay-text');
-    if (ot) {
-      ot.textContent = 'UnhandledRejection: ' + String(ev.reason);
-      overlay.classList.remove('hidden');
-    }
-  });
-
-// grid size (columns x rows) — dynamic from input
 let cols = Math.max(5, Math.min(50, parseInt(sizeInput.value) || 30));
 const rows = 30;
 let values = new Array(cols);
@@ -57,38 +33,60 @@ let timer = null;
 let highlight = {};
 
 function getGridParams() {
-  const w = canvas.width, h = canvas.height;
-  const pad = 20;
-  // column width based on available width
-  const colW = Math.max(2, Math.floor((w - pad*2) / Math.max(1, cols)));
-  // cell height based on available height
-  const cell = Math.max(2, Math.floor((h - pad*2) / Math.max(1, rows)));
-  const usedColW = colW;
-  const usedCell = Math.min(colW, cell);
-  const totalGridWidth = usedColW * cols;
-  const totalGridHeight = usedCell * rows;
-  const offsetX = Math.floor((w - totalGridWidth) / 2);
-  const offsetY = Math.floor((h - totalGridHeight) / 2);
-  const radius = Math.max(2, Math.floor(Math.min(usedCell, usedColW) * 0.36));
-  return {w,h,pad,usedColW,usedCell,totalGridWidth,totalGridHeight,offsetX,offsetY,radius};
+  const w = canvas.width / (window.devicePixelRatio || 1);
+  const h = canvas.height / (window.devicePixelRatio || 1);
+
+  const colW = w / cols;
+  const cell = h / rows;
+
+  return {
+    usedColW: colW,
+    usedCell: cell,
+    offsetX: 0,
+    offsetY: 0,
+    totalGridHeight: h,
+    radius: Math.min(colW, cell) * 0.38
+  };
 }
 
 function resizeCanvas() {
-  const w = Math.min(window.innerWidth - 40, 980);
-  const h = Math.min(window.innerHeight - 160, 720);
-  canvas.width = w;
-  canvas.height = h;
-  // keep the canvas visually responsive as well
-  canvas.style.width = Math.min(window.innerWidth - 40, 980) + 'px';
-  canvas.style.height = 'auto';
+  const dpr = window.devicePixelRatio || 1;
+
+  const idealWidth  = cols * TARGET_COL_PX;
+  const idealHeight = rows * TARGET_ROW_PX;
+
+  const maxWidth  = window.innerWidth - 32;
+  const maxHeight = window.innerHeight - 140;
+
+  const scale = Math.min(
+    MAX_SCALE,
+    Math.max(
+      MIN_SCALE,
+      Math.min(
+        maxWidth / idealWidth,
+        maxHeight / idealHeight,
+        1
+      )
+    )
+  );
+
+  const width  = Math.round(idealWidth * scale);
+  const height = Math.round(idealHeight * scale);
+
+  canvas.width  = width * dpr;
+  canvas.height = height * dpr;
+
+  canvas.style.width  = width + 'px';
+  canvas.style.height = height + 'px';
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   draw();
 }
 window.addEventListener('resize', resizeCanvas);
 
 function randomize() {
-  // values 1..rows
   const arr = Array.from({length: rows}, (_,i)=>i+1);
-  // pick for cols
   values = new Array(cols);
   for (let i=0;i<cols;i++){
     values[i] = arr[Math.floor(Math.random()*arr.length)];
@@ -105,7 +103,6 @@ function draw() {
     for (let r=0;r<rows;r++){
       const cy = offsetY + totalGridHeight - (r*cell + Math.floor(cell/2));
       if (r < val) {
-        // color based on level
         const t = r/rows;
         const col = valueToColor(t);
         ctx.fillStyle = col;
@@ -117,12 +114,11 @@ function draw() {
       ctx.fill();
     }
   }
-  // highlights
   if (highlight.i !== undefined){
-    drawHighlight(highlight.i, 'rgba(180,220,255,0.10)');
+    drawHighlight(highlight.i, 'rgba(62, 62, 62, 0.73)');
   }
   if (highlight.j !== undefined){
-    drawHighlight(highlight.j, 'rgba(100,180,255,0.18)');
+    drawHighlight(highlight.j, 'rgba(203, 64, 54, 0.55)');
   }
 }
 
@@ -139,9 +135,8 @@ function drawHighlight(ix, color){
 }
 
 function valueToColor(t){
-  // t 0..1 -> dark gray -> blue gradient
   const start = {r: 46, g: 46, b: 46};
-  const end = {r: 38, g: 139, b: 210};
+  const end = {r: 220, g: 60, b: 60};
   const r = Math.floor(start.r + (end.r - start.r) * t);
   const g = Math.floor(start.g + (end.g - start.g) * t);
   const b = Math.floor(start.b + (end.b - start.b) * t);
@@ -205,7 +200,6 @@ function* bubbleGen(a){
     }
 
     function* mergeGen(a){
-  // iterative bottom-up merge using auxiliary array, yield after writes
   const n = a.length;
   let width = 1;
   const aux = new Array(n);
@@ -235,7 +229,6 @@ function* bubbleGen(a){
 }
 
 function* quickGen(a){
-  // iterative quicksort using stack of ranges; use Lomuto-ish partition
   const stack = [{l:0, r:a.length-1}];
   while (stack.length){
     const {l,r} = stack.pop();
@@ -260,9 +253,7 @@ function* quickGen(a){
 }
 
 function* heapGen(a){
-  // heapify then extract, yield on swaps (iterative siftDown inline)
   const n = a.length;
-  // build heap (max-heap)
   for (let start = Math.floor((n - 2) / 2); start >= 0; start--) {
     let root = start;
     while (true) {
@@ -279,7 +270,6 @@ function* heapGen(a){
     }
   }
 
-  // extract elements
   for (let end = n - 1; end > 0; end--) {
     [a[0], a[end]] = [a[end], a[0]];
     highlight = {i: 0, j: end};
@@ -326,29 +316,45 @@ function stepOnce(){
 }
 
 function startRun(){
+  const isMobile = window.innerWidth < 600;
+
+  cols = Math.max(
+    5,
+    Math.min(isMobile ? 40 : 100, parseInt(sizeInput.value) || cols)
+  );
+
+  randomize();
+
+  resizeCanvas();
+
   if (timer) clearInterval(timer);
-  const delay = Math.max(5, parseInt(delayInput.value)||100);
-  try{
+
+  const delay = Math.max(5, parseInt(delayInput.value) || 100);
+
+  try {
     gen = makeGenerator(algoSel.value);
     if (!gen) {
       console.error('Could not create generator for', algoSel.value);
       return;
     }
+
     status.textContent = `Running ${algoSel.value}...`;
-    timer = setInterval(()=>{
-      try{
+
+    timer = setInterval(() => {
+      try {
         const alive = stepOnce();
-        if (!alive){
+        if (!alive) {
           clearInterval(timer);
           timer = null;
         }
-      }catch(err){
+      } catch (err) {
         console.error('Error during stepOnce:', err);
         clearInterval(timer);
         timer = null;
       }
     }, delay);
-  }catch(err){
+
+  } catch (err) {
     console.error('Error starting run:', err);
   }
 }
@@ -369,15 +375,7 @@ function hideOverlay(){
 
 startBtn.addEventListener('click', (e)=>{ console.log('start clicked', e); hideOverlay(); cols = Math.max(5, Math.min(100, parseInt(sizeInput.value) || cols)); randomize(); resizeCanvas(); draw(); startRun(); });
 stopBtn.addEventListener('click', (e)=>{ console.log('stop clicked', e); stopRun(); });
-// run-again removed; overlay is informational only
 
-// keyboard shortcuts for quick testing: S=start, X=stop
-window.addEventListener('keydown', (ev)=>{
-  if (ev.key.toLowerCase() === 's'){ console.log('s pressed - start'); hideOverlay(); randomize(); draw(); startRun(); }
-  if (ev.key.toLowerCase() === 'x'){ console.log('x pressed - stop'); stopRun(); }
-});
-
-// initial
   randomize();
   resizeCanvas();
   draw();
