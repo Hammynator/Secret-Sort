@@ -10,6 +10,7 @@
     <div class="controls">
       <label for="algo">Algorithm</label>
       <select id="algo">
+        <option value="bogo">Bogo</option>
         <option value="selection">Selection</option>
         <option value="insertion">Insertion</option>
         <option value="merge">Merge</option>
@@ -19,10 +20,10 @@
       </select>
 
       <label for="delay">Delay (ms)</label>
-      <input id="delay" type="number" min="5" step="10" value="100">
+      <input id="delay" type="number" min="0" max="1000" step="10" value="10">
 
-      <label for="size">Columns</label>
-      <input id="size" type="number" min="5" max="50" step="1" value="30">
+      <label for="size">Elements</label>
+      <input id="size" type="number" min="5" max="100" step="1" value="40">
 
       <button id="start">Start</button>
       <button id="stop">Stop</button>

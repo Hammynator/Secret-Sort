@@ -10,12 +10,19 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  align-items: center;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 #ui {
-  width: 100%;
-  max-width: 950px;
+  margin-left: 6px;
   padding: 12px;
+  max-width: 950px;
 }
 
 .controls {
@@ -42,16 +49,12 @@ body {
   color: #fff;
   cursor: pointer;
   font-size: 16px;
-}
-
-.controls button {
   grid-column: span 2;
 }
 
 #canvas-wrap {
-  flex: 1;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
   padding: 6px;
 }
@@ -71,19 +74,22 @@ canvas {
 
 @media (max-width: 600px) {
   #ui {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: #121212;
-    border-bottom: 1px solid #222;
+    width: 100%;
+    margin-left: 0;
+  }
+  #canvas-wrap {
+    justify-content: center;
+    padding: 6px 0;
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 800px) {
   .controls {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    text-align: left;
+    gap: 8px;
   }
 
   .controls button {
